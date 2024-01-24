@@ -1,24 +1,36 @@
 import speech_recognition as sr
 import pyttsx3
-from  google_trans_new import google_translator
+from google_trans_new import google_translator
 import gtts as gt
-import os
 from googletrans import Translator
-from playsound import playsound
 from io import BytesIO
 import pygame
 from pygame import mixer
+from noisereduce import reduce_noise
+import numpy as np  # Import numpy for handling sampling rate
 
-fl=0
-while(fl==0):
+fl = 0
+while fl == 0:
     def live_speech_to_text(language='ta-IN'):
         recognizer = sr.Recognizer()
 
         with sr.Microphone() as source:
             print("Speak something in Tamil...")
-            audio_data = recognizer.listen(source,5,15)  # Listen for up to 10 seconds
+            audio_data = recognizer.listen(source, timeout=5, phrase_time_limit=15)  # Listen for up to 10 seconds
 
             try:
+                # Get the sampling rate of the audio data
+                sr_value = audio_data.sample_rate
+                
+                # Convert audio data to numpy array
+                audio_array = np.frombuffer(audio_data.frame_data, dtype=np.int16)
+                
+                # Apply noise reduction to the audio data
+                reduced_audio = reduce_noise(audio_array, sr_value)
+                
+                # Convert the numpy array back to audio data
+                audio_data = sr.AudioData(reduced_audio.tobytes(), sr_value, audio_data.sample_width)
+                
                 text = recognizer.recognize_google(audio_data, language=language)
                 return text
             except sr.UnknownValueError:
@@ -37,7 +49,7 @@ while(fl==0):
     print("Translated text (English):")
     print(translated_text.text)
     translated_text2 = translator.translate(translated_text.text, src='en', dest='ta')
-    print(translated_text.text)
+    print(translated_text2.text)
     tts = gt.gTTS(text=translated_text2.text, lang='ta')
 
     buffer = BytesIO()
@@ -56,6 +68,8 @@ while(fl==0):
     # Wait for the speech to finish playing
     while pygame.mixer.music.get_busy():
         pygame.time.Clock().tick(10)
+    
     print("Do you want to exit?")
-    c=input()
-    if(c=='y' or c=='y'):fl
+    c = input()
+    if c.lower() == 'y':
+        fl = 1
